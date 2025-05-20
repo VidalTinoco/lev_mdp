@@ -1,5 +1,13 @@
-﻿data/raw/
+﻿# Datos sensibles o pesados
+data/raw/
+
+# Archivos temporales de R
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# Archivos de entorno local
 *.Rhistory
 *.RData
-.Rproj.user/
-.Ruserdata
+*.Rproj
