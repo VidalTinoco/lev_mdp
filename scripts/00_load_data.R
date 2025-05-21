@@ -1,4 +1,4 @@
-##### Script 1: get the data #####
+##### Script 0: get the data #####
 ##### Retrieved from: https://statsbomb.com/articles/soccer/free-statsbomb-data-bayer-leverkusens-invincible-bundesliga-title-win/
 ##### last modified date: may 20, 2025
 ##### Author: Vidal Tinoco
