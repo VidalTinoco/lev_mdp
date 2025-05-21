@@ -87,20 +87,24 @@ crit_check <- map_dfc(
 ## Overview 
 
 overview_tbl <- tibble(
-  dataset = c("StatsbombData", "StatsbombData360"),
-  n_rows = c(nrow(StatsbombData),   nrow(StatsbombData360)),
-  n_cols = c(ncol(StatsbombData),   ncol(StatsbombData360)),
-  n_matches = c(n_distinct(StatsbombData$match_id),
-                    n_distinct(StatsbombData360$match_id)),
-  n_duplicates = c(dup_events$n_dup,   dup_events360$n_dup)
+  dataset     = c("StatsbombData", "StatsbombData360"),
+  n_rows      = c(nrow(StatsbombData),   nrow(StatsbombData360)),
+  n_cols      = c(ncol(StatsbombData),   ncol(StatsbombData360)),
+  n_matches   = c(n_distinct(StatsbombData$match_id),
+                  n_distinct(StatsbombData360$match_id)),
+  n_duplicates = c(dup_events$n_dup, dup_events360$n_dup)
 ) |>
-  bind_cols(crit_check)   # append *_all_na flags
+  bind_cols(
+    crit_check,                                
+    crit_check |> 
+      mutate(across(everything(), ~NA))  
+  )
+
 
 print(overview_tbl)  
 
 
 # Check 360 data -----
-
 
 ## Helper: does a row have a non-empty freeze_frame? 
 
@@ -148,3 +152,98 @@ ggsave("outputs/coverage_360.png", plot_cov, width = 6, height = 4, dpi = 300)
 
 
 # Column normalization and debugging -----
+
+## Helper: identify coordinate columns 
+coord_cols <- names(StatsbombData360) |> 
+  keep(\(nm) str_detect(nm, "\\.x$|\\.y$"))
+
+## Scale coordinates if in [0,1] 
+scale_if_needed <- function(df) {
+  scaled <- FALSE
+  df2 <- df
+  for (col in coord_cols) {
+    rng <- range(df[[col]], na.rm = TRUE)
+    if (!all(is.na(rng)) && rng[2] <= 1.01) {
+      factor <- ifelse(str_ends(col, "\\.x$"), 120, 80)
+      df2 <- df2 |> mutate("{col}" := .data[[col]] * factor)
+      scaled <- TRUE
+    }
+  }
+  list(data = df2, scaled = scaled)
+}
+
+events_scaled_raw <- StatsbombData360          
+scale_res <- scale_if_needed(events_scaled_raw)
+events_scaled <- scale_res$data
+
+## Drop columns with >95% NA 
+pct_na <- map_dbl(events_scaled, ~ mean(is.na(.x)))
+to_drop <- names(pct_na)[pct_na > 0.95]
+
+events_reduced <- events_scaled |> 
+  select(-all_of(to_drop))
+
+## Flatten freeze_frame to teammate-only JSON 
+
+events_clean <- events_reduced |>
+  mutate(
+    freeze_frame = map_chr(
+      freeze_frame,
+      \(ff) {
+        
+        ## Discard NULL or all NA
+        if (is.null(ff) || all(is.na(ff))) return(NA_character_)
+        
+        ## If it comes as a data frame, convert it to a row-by-row list
+        if (is.data.frame(ff)) {
+          ff <- split(ff, seq_len(nrow(ff)))
+        }
+        
+        ## if it is not ready at this point, then not processable
+        if (!is.list(ff)) return(NA_character_)
+        
+        ## keep only teammates
+        team_only <- keep(ff, \(p) isTRUE(p$teammate))
+        
+        if (length(team_only) == 0) return(NA_character_)
+        
+        ## JSON
+        toJSON(team_only, auto_unbox = TRUE,
+               null = "null", digits = NA)
+      }
+    )
+  )
+
+
+
+## Transformation log 
+
+log_df <- tribble(
+  ~timestamp, ~author, ~action, ~details,
+  
+  ## scaling 
+  now(tzone = "UTC"), "auto_QC", "scale_coordinates",
+  ifelse(
+    scale_res$scaled,
+    "scaled 0-1 coords to 0-120/80",
+    "no scaling applied"
+  ),
+  
+  ## dropping sparse columns 
+  now(tzone = "UTC"), "auto_QC", "drop_na_columns",
+  paste(length(to_drop), "columns dropped (>95 % NA)"),
+  
+  ## freeze-frame clean-up 
+  now(tzone = "UTC"), "auto_QC", "flatten_freeze_frame",
+  "kept teammates only; converted to JSON"
+)
+
+
+dir.create("logs", showWarnings = FALSE)
+
+write_csv(log_df, file = "logs/transform_log.csv", append = file.exists("logs/transform_log.csv"))
+
+## Save clean data 
+dir.create("data/derived", showWarnings = FALSE)
+
+saveRDS(events_clean, file = "data/derived/events_clean.rds")

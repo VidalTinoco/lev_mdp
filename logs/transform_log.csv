@@ -1,0 +1,4 @@
+timestamp,author,action,details
+2025-05-21T05:13:22Z,auto_QC,scale_coordinates,no scaling applied
+2025-05-21T05:13:22Z,auto_QC,drop_na_columns,127 columns dropped (>95 % NA)
+2025-05-21T05:13:22Z,auto_QC,flatten_freeze_frame,kept teammates only; converted to JSON
