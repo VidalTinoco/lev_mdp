@@ -1,22 +1,22 @@
 ## run/02_generate_events_states.R
-# This script creates data/derived/events_states.rds from events_clean.rds
-# (assigning each event its state_id based on location.x, location.y)
+# This script creates data/derived/events_states.rds from events_clean.rds,
+# assigning state_id to the new 8x5 grid.
 
-# Libraries
+# libraries
 library(dplyr)
 library(here)
 
-# Load data
+# load data
 events_clean <- readRDS(here("data/derived/events_clean.rds"))
 
-# breaks
-x_breaks <- seq(0, 1, length.out = 13)
-y_breaks <- seq(0, 1, length.out = 8)
+#  Define breajs for 8×5 grid
+x_breaks <- seq(0, 1, length.out = 9)   # 8 bins in X
+y_breaks <- seq(0, 1, length.out = 6)   # 5 bins in Y
 
 # load assign_state() 
 source(here("src/features/utils_states.R"))
 
-# Assign state_id to each event using location.x, location.y
+# Assign state_id to each event using location.x / location.y
 events_states <- events_clean |>
   mutate(
     x_coord = location.x,
@@ -36,4 +36,4 @@ events_states <- events_clean |>
 
 # save output
 saveRDS(events_states, here("data/derived/events_states.rds"))
-message("events_states.rds created correctly.")
+message("events_states.rds created correctly with 8×5 grid")
