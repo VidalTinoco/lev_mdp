@@ -1,5 +1,5 @@
 ﻿# Datos sensibles o pesados
-data/raw/
+data/
 
 # Archivos temporales de R
 .Rhistory
