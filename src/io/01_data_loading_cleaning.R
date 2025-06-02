@@ -11,9 +11,7 @@ library(readr)
 source(here("src/io/utils.R"))
 
 # Loading raw RDS files
-event_files <- list.files(here("data/raw"), pattern = "*.rds$", full.names = TRUE)
-events_list <- lapply(event_files, readRDS)
-df_raw <- bind_rows(events_list)
+df_raw <- readRDS(here("data/raw/StatsbombData360.rds"))
 
 # clean dataframe
 df_clean <- df_raw |> 
